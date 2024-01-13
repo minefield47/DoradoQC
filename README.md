@@ -2,7 +2,8 @@
 
 ## Dependencies
 
-```{ggplot2}
+```{Required Libraries:}
+ggplot2
 readxl
 tools
 ggExtra
