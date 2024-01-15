@@ -1,17 +1,21 @@
 
 # Metadata ----------------------------------------------------------------
-#DoradoQC
-# A simple R-based quality control for dorado summary files. 
+#DoradoQC_simplex
+# A simple(x) R-based quality control for Dorado summary files. 
 # Author: Auden Block
-#
+#Contact: arb {@} uncw {.} edu
+# Last Modification: 11/12/2024
 #
 # Libraries ---------------------------------------------------------------
 
 library(ggplot2)
-library(readxl)
 library(tools)
 library(ggExtra)
 library(utils)
+library(dplyr)
+
+# No PDF output -----------------------------------------------------------
+
 
 #Prevent Rplot.pdf output
 if(!interactive()) pdf(NULL)
@@ -22,20 +26,19 @@ if(!interactive()) pdf(NULL)
 #Set Q-Score
 qscore <- 17
 print(paste0("Current Q-Score is set to: ", qscore))
-#Set Binning for read length, for those expecting long reads set this value higher
-length_bin <- 5000
-print(paste0("Current Binning for Read Length is set to: ", length_bin))
 
+#Colors Used for Quality Scoring. 
 colors <- c("#e76f51", "#2a9d8f")
 
-# Scripting (Do not Modify) -----------------------------------------------
+#Set Binning for read length. For those expecting ultra-long reads: set this value higher
+length_bin <- 5000
+print(paste0("Current Binning for Read Length is set to: ", length_bin))
 
 # Graph Function ----------------------------------------------------------
 
 graphing <- function(i) {
-  
   #Sort by start time
-  summary <- summary[order(summary$template_start),]
+  summary <- i[order(i$template_start),]
   
   #Data Mutations  
   #Seconds to hours
@@ -92,15 +95,38 @@ graphing <- function(i) {
   
 }
 
+# Input Detection and Sorting Function ------------------------------------
+
+input <- function(x)  {
+  if (dir.exists(x) && !(grepl("DoradoQCduplex_", x))){ #Check if argument is a directory and that a DoradoQCduplex_<file_name> does not exist. If true, lump the directory and execute. 
+    print("New Directory Detected")
+    all.summary.list <- list.files(path=x, full.names = TRUE) %>%
+      lapply(., read.delim, header = T, na.strings =c("","NA")) %>%
+      bind_rows() 
+    
+  } else if (dir.exists(x) && (grepl("DoradoQCduplex_", x))){ #Same as previous, except if a DoradoQCduplex_ directory exists, skip the input. 
+    print(paste0("A summary of the directory <",x,"> currently exists already! Rename the directory or summary file and try again."))
+    next
+  } else { #If it ain't a directory, it has to be a file. 
+    print("Individual File")
+    if (dir.exists(paste0("DoradoQCduplex_",tools::file_path_sans_ext(x)))) { #Make sure duplex has not been done previously on this model. 
+      paste0("A summary directory for the file <",x,"> currently exists already! Rename the directory or summary file and try again.")
+      next
+    }else {
+      print("New Individual file Detected")
+      all.summary.list <- x %>% 
+        read.delim(. , header=T, na.strings = c("","NA")) 
+    }
+  }
+  all.summary.list
+}  
 
 
-# Input Detection and Sorting ---------------------------------------------
 
-#Summary files from command arguments.
+# Execute the functions ---------------------------------------------------
+
+#Pull summary files from command arguments.
 args <- commandArgs(trailingOnly = TRUE)
-
-#To remove after testing.
-args <- c("hac_summary")
 
 
 #Check that some input file is given.
@@ -108,38 +134,8 @@ if (length(args)==0) {
   stop("A summary file or directory is required.")
 }
 
-for (x in args){
-  if (dir.exists(x)) { #Is it a directory and not a file? 
-    print("Directory Detected")
-    if (grepl("DoradoQC_", x)) { #Does a summary directory already exist?
-      print(paste0("A summary of the directory <",x,"> currently exists already! Rename the directory or summary file and try again."))
-      next
-    } else {
-    print("New directory detected")
-    dir <- paste0("DoradoQC_",tools::file_path_sans_ext(x))
-    files <- list.files(path=x)
-    summary.list <- lapply(files, read.delim)
-    summary <- bind_rows(summary.list)
-    print("Summary File Created")
-    dir.create(dir)
-    graphing(summary)
-    }
-  } else {
-    print("Individual file detected")
-  #Create a directory name from the file name without the extension. 
-     dir <- paste0("DoradoQC_",tools::file_path_sans_ext(x))
-  
-  #Check if a directory named after the summary file already exists, if yes = stop, else create directory. 
-      if (dir.exists(dir)) {
-      paste0("A summary directory for the file <",x,"> currently exists already! Rename the directory or summary file and try again.")
-      next
-      }else {
-      print("creating individual directory")
-      dir.create(dir)
-     # Import the tsv for each file. 
-      summary <- read.delim(x)
-      #Run the graphing function. 
-      graphing(summary)
-      }
-  }
+for (x in args) {
+  all.summary.reads <- x %>% 
+    input() %>% 
+    graphing()
 }
