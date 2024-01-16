@@ -36,7 +36,59 @@ print(paste0("Current Binning for Read Length is set to: ", length_bin))
 
 # Graph Function ----------------------------------------------------------
 
+
+
+
+# Input Detection and Sorting Function ------------------------------------
+
+
+
+
+input <- function(x)  {
+  if (dir.exists(x) && !(grepl("DoradoQCduplex_", x))){ #Check if argument is a directory and that a DoradoQCduplex_<file_name> does not exist. If true, lump the directory and execute. 
+    print("New Directory Detected")
+    #Create variable of what new directory should be named
+    dir <- paste0(tools::file_path_sans_ext(x),"_DoradoQC_simplex")
+    #Create the directory
+    dir.create(path=dir)
+    
+    all.summary.list <- list.files(path=x, full.names = TRUE) %>%
+      lapply(., read.delim, header = T, na.strings =c("","NA")) %>%
+      bind_rows() %>%
+      list(reads = .,
+           dir = dir)
+  } else if (dir.exists(x) && (grepl("DoradoQCduplex_", x))){ #Same as previous, except if a DoradoQCduplex_ directory exists, skip the input. 
+    print(paste0("A summary of the directory <",x,"> currently exists already! Rename the directory or summary file and try again."))
+    next
+  } else { #If it ain't a directory, it has to be a file. 
+    print("Individual File")
+    if (dir.exists(paste0("DoradoQCduplex_",tools::file_path_sans_ext(x)))) { #Make sure duplex has not been done previously on this model. 
+      paste0("A summary directory for the file <",x,"> currently exists already! Rename the directory or summary file and try again.")
+      next
+    }else {
+      print("New Individual file Detected")
+      #Create variable of what new directory should be named
+      dir <- paste0(tools::file_path_sans_ext(x),"_DoradoQC_simplex")
+      #Create the directory
+      dir.create(path=dir)
+      
+      all.summary.list <- x %>% 
+        read.delim(. , header=T, na.strings = c("","NA")) %>%
+        list( reads = . ,
+              dir = dir)
+    }
+  }
+  #Pass the list to the next function, or for list to be saved.
+  all.summary.list
+}  
+
+
+
+
 graphing <- function(i) {
+  
+  dir <- all.summary.list[]
+  
   #Sort by start time
   summary <- i[order(i$template_start),]
   
@@ -72,11 +124,23 @@ graphing <- function(i) {
       labs(y="Mean Q-Score", x= "Read Length") +
       theme_classic() +
       scale_color_manual(name=paste0("Q-Score: ", qscore), values=colors, labels=c("Below Q-Score", "Above Q-Score"))
+    plot <- ggMarginal(theme_classic() + theme(legend.position = "left"), type="histogram", binwidth=1)    
+    ggsave(paste0(dir,"/sequencelength_qscore_scatter_with_histogram.png"), plot = plot)
+    print("Scatter with Histogram Margins created")
+    rm(plot) #Remove the plot vector necessary to enable marginal 
+  
+    plot <- ggplot(summary, aes(x=sequence_length_template, y=mean_qscore_template, color=(mean_qscore_template >= qscore))) + 
+      geom_point() +
+      labs(y="Mean Q-Score", x= "Read Length") +
+      theme_classic() +
+      scale_color_manual(name=paste0("Q-Score: ", qscore), values=colors, labels=c("Below Q-Score", "Above Q-Score"))
     plot <- ggMarginal(plot + theme_classic() + theme(legend.position = "left"), type="histogram", binwidth=1)    
     ggsave(paste0(dir,"/sequencelength_qscore_scatter_with_histogram.png"), plot = plot)
     print("Scatter with Histogram Margins created")
-  
-  
+    rm(plot) #Remove the plot vector necessary to enable marginal 
+    
+    
+    
   #Cumulative Sum over time 
     #Create subsample of reads over quality score
       subsample <- subset(summary, (summary$mean_qscore_template>=qscore))
@@ -95,33 +159,6 @@ graphing <- function(i) {
   
 }
 
-# Input Detection and Sorting Function ------------------------------------
-
-input <- function(x)  {
-  if (dir.exists(x) && !(grepl("DoradoQCduplex_", x))){ #Check if argument is a directory and that a DoradoQCduplex_<file_name> does not exist. If true, lump the directory and execute. 
-    print("New Directory Detected")
-    all.summary.list <- list.files(path=x, full.names = TRUE) %>%
-      lapply(., read.delim, header = T, na.strings =c("","NA")) %>%
-      bind_rows() 
-    
-  } else if (dir.exists(x) && (grepl("DoradoQCduplex_", x))){ #Same as previous, except if a DoradoQCduplex_ directory exists, skip the input. 
-    print(paste0("A summary of the directory <",x,"> currently exists already! Rename the directory or summary file and try again."))
-    next
-  } else { #If it ain't a directory, it has to be a file. 
-    print("Individual File")
-    if (dir.exists(paste0("DoradoQCduplex_",tools::file_path_sans_ext(x)))) { #Make sure duplex has not been done previously on this model. 
-      paste0("A summary directory for the file <",x,"> currently exists already! Rename the directory or summary file and try again.")
-      next
-    }else {
-      print("New Individual file Detected")
-      all.summary.list <- x %>% 
-        read.delim(. , header=T, na.strings = c("","NA")) 
-    }
-  }
-  all.summary.list
-}  
-
-
 
 # Execute the functions ---------------------------------------------------
 
@@ -135,7 +172,8 @@ if (length(args)==0) {
 }
 
 for (x in args) {
-  all.summary.reads <- x %>% 
-    input() %>% 
+  
+   x %>% input()
+  
     graphing()
 }

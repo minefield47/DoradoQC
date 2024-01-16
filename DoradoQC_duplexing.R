@@ -44,6 +44,7 @@ dir <- "/Users/auden/call_fast_testing"
 dir. <- "/Users/auden/call_fast_testing/"
 
 
+
 input <- function(x)  {
   if (dir.exists(x) && !(grepl("DoradoQCduplex_", x))){ #Check if argument is a directory and that a DoradoQCduplex_<file_name> does not exist. If true, lump the directory and execute. 
     print("New Directory Detected")
@@ -51,6 +52,13 @@ input <- function(x)  {
       lapply(., read.delim, header = T, na.strings =c("","NA")) %>%
       bind_rows() %>%
       list(., subset(., is.na(.$filename)), subset(., !(is.na(.$filename))))
+    
+      #Create variable of what new directory should be named
+      dir <- paste0(tools::file_path_sans_ext(x),"_DoradoQC_simplex")
+      #Create the directory
+      dir.create(path=dir)
+      #Append the name of the directory to the end of the list for the next function to take and use. 
+      all.summary.list <- append(all.summary.list , dir)
 
   } else if (dir.exists(x) && (grepl("DoradoQCduplex_", x))){ #Same as previous, except if a DoradoQCduplex_ directory exists, skip the input. 
     print(paste0("A summary of the directory <",x,"> currently exists already! Rename the directory or summary file and try again."))
@@ -62,11 +70,23 @@ input <- function(x)  {
       next
     }else {
       print("New Individual file Detected")
-    all.summary.list <- x %>% 
-      read.delim(. , header=T, na.strings = c("","NA")) %>% 
-      list(., subset(., is.na(.$filename)), subset(., !(is.na(.$filename))))
+  
+      all.summary.list <- x %>% 
+        read.delim(. , header=T, na.strings = c("","NA")) %>% 
+        list(all=.,
+             duplex = subset(., is.na(.$filename)),
+             simplex= subset(., !(is.na(.$filename))),
+             dir = dir)
+      
+      #Create variable of what new directory should be named
+      dir <- paste0(tools::file_path_sans_ext(x),"_DoradoQC_simplex")
+      #Create the directory
+      dir.create(path=dir)
+      #Append the name of the directory to the end of the list for the next function to take and use. 
+      all.summary.list <- append(all.summary.list , dir)
     }
   }
+  #Pass the list to the next function, or for list to be saved.
   all.summary.list
 }  
 
