@@ -34,24 +34,19 @@ colors <- c("#e76f51", "#2a9d8f")
 length_bin <- 5000
 print(paste0("Current Binning for Read Length is set to: ", length_bin))
 
-# Graph Function ----------------------------------------------------------
-
-
-
 
 # Input Detection and Sorting Function ------------------------------------
-
-
 
 
 input <- function(x)  {
   if (dir.exists(x) && !(grepl("DoradoQCduplex_", x))){ #Check if argument is a directory and that a DoradoQCduplex_<file_name> does not exist. If true, lump the directory and execute. 
     print("New Directory Detected")
     #Create variable of what new directory should be named
-    dir <- paste0(tools::file_path_sans_ext(x),"_DoradoQC_simplex")
+    print(x)
+    list.files(path=x)
+    dir <- paste0(getwd(),"/", basename(x),"_DoradoQC_simplex")
     #Create the directory
     dir.create(path=dir)
-    
     all.summary.list <- list.files(path=x, full.names = TRUE) %>%
       lapply(., read.delim, header = T, na.strings =c("","NA")) %>%
       bind_rows() %>%
@@ -68,7 +63,7 @@ input <- function(x)  {
     }else {
       print("New Individual file Detected")
       #Create variable of what new directory should be named
-      dir <- paste0(tools::file_path_sans_ext(x),"_DoradoQC_simplex")
+      dir <- paste0(getwd(),"/", basename(x),"_DoradoQC_simplex")
       #Create the directory
       dir.create(path=dir)
       
@@ -84,77 +79,65 @@ input <- function(x)  {
 
 
 
-
-graphing <- function(i) {
-  
-  dir <- all.summary.list[]
-  
+graphing <- function(all.summary.list) {
+  setwd(all.summary.list$dir)
   #Sort by start time
-  summary <- i[order(i$template_start),]
+  all.summary.list$reads <- all.summary.list$reads[order(all.summary.list$reads$template_start),]
   
   #Data Mutations  
   #Seconds to hours
-  summary[,"start_hours"] <- summary$template_start / (60*60)
+  all.summary.list$reads[,"start_hours"] <- all.summary.list$reads$template_start / (60*60)
   
   #create column of cumulative reads over time
-  summary[,"cumreads"] <- cumsum(summary$sequence_length_template)
+  all.summary.list$reads[,"cumreads"] <- cumsum(all.summary.list$reads$sequence_length_template)
     
   #Histogram of Mean Q-Score
-    ggplot(summary, aes(x=mean_qscore_template, fill=(mean_qscore_template >= qscore))) + 
+   histogram.meanq <- ggplot(all.summary.list$reads, aes(x=mean_qscore_template, fill=(mean_qscore_template >= qscore))) + 
       geom_histogram(binwidth = 1) +
       labs(x = "Mean Q-Score") + 
       theme_classic()+
       scale_fill_manual(name=paste0("Q-Score: ", qscore), values=colors, labels=c("Below Q-Score", "Above Q-Score"))
-    ggsave(paste0(dir,"/meanqscore_histogram.png"))
+    ggsave("meanqscore_histogram.png")
     print("Histogram of Mean Q-Score created")
   
   #Histogram of Read Lengths
-    ggplot(summary, aes(x=sequence_length_template, fill=(mean_qscore_template >= qscore))) + 
+   histogram.read <- ggplot(all.summary.list$reads, aes(x=sequence_length_template, fill=(mean_qscore_template >= qscore))) + 
       geom_histogram(binwidth = length_bin, alpha=0.5) +
       labs(x = paste0("Read Length (Binning=", length_bin,")")) + 
       theme_classic()+
       scale_fill_manual(name=paste0("Q-Score: ", qscore), values=colors, labels=c("Below Q-Score", "Above Q-Score"))
-    ggsave(paste0(dir,"/sequencelength_histogram.png"))
+    ggsave("sequencelength_histogram.png")
     print("Histogram of Read Lengths created")
   
   #Scatterplot with histogram margins
-  
-    plot <- ggplot(summary, aes(x=sequence_length_template, y=mean_qscore_template, color=(mean_qscore_template >= qscore))) + 
+
+    scatter.histo <- ggplot(all.summary.list$reads, aes(x=sequence_length_template, y=mean_qscore_template, color=(mean_qscore_template >= qscore))) + 
       geom_point() +
       labs(y="Mean Q-Score", x= "Read Length") +
       theme_classic() +
       scale_color_manual(name=paste0("Q-Score: ", qscore), values=colors, labels=c("Below Q-Score", "Above Q-Score"))
-    plot <- ggMarginal(theme_classic() + theme(legend.position = "left"), type="histogram", binwidth=1)    
-    ggsave(paste0(dir,"/sequencelength_qscore_scatter_with_histogram.png"), plot = plot)
+    scatter.histo <- ggMarginal(scatter.histo, theme_classic() + theme(legend.position = "left"), type="histogram", binwidth=1) #Bin Length has to be 1 for the Quality Score index
+    ggsave("sequencelength_qscore_scatter_with_histogram.png", plot = scatter.histo)
     print("Scatter with Histogram Margins created")
-    rm(plot) #Remove the plot vector necessary to enable marginal 
   
-    plot <- ggplot(summary, aes(x=sequence_length_template, y=mean_qscore_template, color=(mean_qscore_template >= qscore))) + 
-      geom_point() +
-      labs(y="Mean Q-Score", x= "Read Length") +
-      theme_classic() +
-      scale_color_manual(name=paste0("Q-Score: ", qscore), values=colors, labels=c("Below Q-Score", "Above Q-Score"))
-    plot <- ggMarginal(plot + theme_classic() + theme(legend.position = "left"), type="histogram", binwidth=1)    
-    ggsave(paste0(dir,"/sequencelength_qscore_scatter_with_histogram.png"), plot = plot)
-    print("Scatter with Histogram Margins created")
-    rm(plot) #Remove the plot vector necessary to enable marginal 
-    
     
     
   #Cumulative Sum over time 
     #Create subsample of reads over quality score
-      subsample <- subset(summary, (summary$mean_qscore_template>=qscore))
+      subsample <- subset(all.summary.list$reads, (all.summary.list$reads$mean_qscore_template>=qscore))
     #Recalculate the cumulative sum  
       subsample[,"cumreads"] <- cumsum(subsample$sequence_length_template)
     #Plot:  
-    ggplot() +
-      geom_point(data = summary, aes(start_hours, cumreads, color = colors[1])) +
+   cum.sum <- ggplot(all.summary.list$reads, aes(start_hours, cumreads, color = colors[1])) +
+     #All Reads
+      geom_point() +
+     #Subsamples
       geom_point(data = subsample, aes(start_hours, cumreads, color= colors[2])) +
       theme_classic()+
       theme(legend.position="bottom")+
-      scale_color_manual(name=paste0("Q-Score: ", qscore), values=colors, labels=c("Below Q-Score", "Above Q-Score")) +
+      scale_color_manual(name=paste0("Q-Score: ", qscore), values=colors, labels=c("All Reads", "Above Specified Q-Score")) +
       labs(x="Run Time (s)", y="Cumulative Reads", color ="the legend")
-    ggsave(paste0(dir,"/runtime_vs_cumulativereads_filtered.png"))
+    ggsave("runtime_vs_cumulativereads_filtered.png")
     print("Cumulative Sum over Time created")
   
 }
@@ -171,9 +154,10 @@ if (length(args)==0) {
   stop("A summary file or directory is required.")
 }
 
+
+
 for (x in args) {
-  
-   x %>% input()
-  
-    graphing()
+   x %>% 
+    input() %>%
+      graphing()
 }
