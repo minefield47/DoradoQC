@@ -48,18 +48,19 @@ dir. <- "/Users/auden/call_fast_testing/"
 input <- function(x)  {
   if (dir.exists(x) && !(grepl("DoradoQCduplex_", x))){ #Check if argument is a directory and that a DoradoQCduplex_<file_name> does not exist. If true, lump the directory and execute. 
     print("New Directory Detected")
-    all.summary.list <- list.files(path=x, full.names = TRUE) %>%
-      lapply(., read.delim, header = T, na.strings =c("","NA")) %>%
-      bind_rows() %>%
-      list(., subset(., is.na(.$filename)), subset(., !(is.na(.$filename))))
+    #Create variable of what new directory should be named.
+    dir <- paste0(getwd(),"/", basename(x),"_DoradoQC_duplex")
+    #Create directory.
+    dir.create(path=dir)
     
-      #Create variable of what new directory should be named
-      dir <- paste0(tools::file_path_sans_ext(x),"_DoradoQC_simplex")
-      #Create the directory
-      dir.create(path=dir)
-      #Append the name of the directory to the end of the list for the next function to take and use. 
-      all.summary.list <- append(all.summary.list , dir)
-
+    all.summary.list <- list.files(path=x, full.names = TRUE) %>% #List all summary files.
+      lapply(., read.delim, header = T, na.strings =c("","NA")) %>% #Read files into R as a list of dataframes.
+      bind_rows() %>% #Merge the List into one mega dataframe.
+      list(all=., #Original Dataframe.
+           duplex=subset(., is.na(.$filename)), #Subset of only duplex values since duplex do not have a filename value.
+           simplex=subset(., !(is.na(.$filename))), #Subset only those with a file name, also known as simplex reads.
+           dir=dir) #Directory created name to be passed to next function.
+    
   } else if (dir.exists(x) && (grepl("DoradoQCduplex_", x))){ #Same as previous, except if a DoradoQCduplex_ directory exists, skip the input. 
     print(paste0("A summary of the directory <",x,"> currently exists already! Rename the directory or summary file and try again."))
     next
@@ -71,19 +72,17 @@ input <- function(x)  {
     }else {
       print("New Individual file Detected")
   
-      all.summary.list <- x %>% 
-        read.delim(. , header=T, na.strings = c("","NA")) %>% 
-        list(all=.,
-             duplex = subset(., is.na(.$filename)),
-             simplex= subset(., !(is.na(.$filename))),
-             dir = dir)
-      
-      #Create variable of what new directory should be named
-      dir <- paste0(tools::file_path_sans_ext(x),"_DoradoQC_simplex")
-      #Create the directory
+      #Create variable of what new directory should be named.
+      dir <- paste0(getwd(),"/", basename(x),"_DoradoQC_simplex")
+      #Create  directory.
       dir.create(path=dir)
-      #Append the name of the directory to the end of the list for the next function to take and use. 
-      all.summary.list <- append(all.summary.list , dir)
+      
+      all.summary.list <- read.delim(x , header=T, na.strings = c("","NA")) %>% #Read in the file as a dataframe.
+        list(all=., #Original dataframe. 
+             duplex = subset(., is.na(.$filename)), #Subset of only duplex values since duplex do not have a filename value.
+             simplex= subset(., !(is.na(.$filename))), #Subset only those with a file name, also known as simplex reads.
+             dir = dir) #Directory created name to be passed to next function.
+      
     }
   }
   #Pass the list to the next function, or for list to be saved.

@@ -41,17 +41,21 @@ print(paste0("Current Binning for Read Length is set to: ", length_bin))
 input <- function(x)  {
   if (dir.exists(x) && !(grepl("DoradoQCduplex_", x))){ #Check if argument is a directory and that a DoradoQCduplex_<file_name> does not exist. If true, lump the directory and execute. 
     print("New Directory Detected")
-    #Create variable of what new directory should be named
+    #Create variable of what new directory should be named.
     print(x)
-    list.files(path=x)
+    
+    #Create variable of what new directory should be named.
     dir <- paste0(getwd(),"/", basename(x),"_DoradoQC_simplex")
-    #Create the directory
+    #Create the directory.
     dir.create(path=dir)
-    all.summary.list <- list.files(path=x, full.names = TRUE) %>%
-      lapply(., read.delim, header = T, na.strings =c("","NA")) %>%
-      bind_rows() %>%
-      list(reads = .,
-           dir = dir)
+    #Create a list of the files within called argument directory.
+    list.files(path=x)
+    
+    all.summary.list <- list.files(path=x, full.names = TRUE) %>% #List all summary files.
+      lapply(., read.delim, header = T, na.strings =c("","NA")) %>% #Read files into R as a list of dataframes.
+      bind_rows() %>% #Merge the list into a single dataframe.
+      list(reads = ., 
+           dir = dir) #Create a new list of reads and the directory created for the graphing function. 
   } else if (dir.exists(x) && (grepl("DoradoQCduplex_", x))){ #Same as previous, except if a DoradoQCduplex_ directory exists, skip the input. 
     print(paste0("A summary of the directory <",x,"> currently exists already! Rename the directory or summary file and try again."))
     next
@@ -62,18 +66,18 @@ input <- function(x)  {
       next
     }else {
       print("New Individual file Detected")
-      #Create variable of what new directory should be named
+      #Create variable of what new directory should be named.
       dir <- paste0(getwd(),"/", basename(x),"_DoradoQC_simplex")
-      #Create the directory
+      #Create the directory.
       dir.create(path=dir)
       
       all.summary.list <- x %>% 
-        read.delim(. , header=T, na.strings = c("","NA")) %>%
+        read.delim(. , header=T, na.strings = c("","NA")) %>% #read file into R as a dataframe.
         list( reads = . ,
-              dir = dir)
+              dir = dir) #Create a new list of reads and the directory created for the graphing function. 
     }
   }
-  #Pass the list to the next function, or for list to be saved.
+  #Return the list. Must be kept at the end of the function.
   all.summary.list
 }  
 
