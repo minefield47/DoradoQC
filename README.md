@@ -28,4 +28,9 @@ Example:
 DoradoQC_Simplex will currently output four graphs:
 ### Mean Quality Score Histogram
 ![Mean Quality Score Histogram](bp_g1_summary_DoradoQC_simplex/meanqscore_histogram.png)
-
+### Run Time vs Cumulative Reads
+![Run Time vs Cumulative Reads](bp_g1_summary_DoradoQC_simplex/runtime_vs_cumulativereads_filtered.png)
+### Run Time vs Cumulative Reads
+![Sequence Length Histogram](bp_g1_summary_DoradoQC_simplex/sequencelength_histogram.png)
+### Run Time vs Cumulative Reads
+![Scatterplot of Read Length vs Mean Q-Score with Histogram Margins](bp_g1_summary_DoradoQC_simplex/sequencelength_qscore_scatter_with_histogram.png)
