@@ -1,4 +1,3 @@
-
 # Metadata ----------------------------------------------------------------
 #DoradoQC_simplex
 # A simple(x) R-based quality control for Dorado summary files. 
@@ -37,12 +36,9 @@ print(paste0("Current Binning for Read Length is set to: ", length_bin))
 
 # Input Detection and Sorting Function ------------------------------------
 
-
-input <- function(x)  {
+import <- function(x)  {
   if (dir.exists(x) && !(grepl("DoradoQCduplex_", x))){ #Check if argument is a directory and that a DoradoQCduplex_<file_name> does not exist. If true, lump the directory and execute. 
     print("New Directory Detected")
-    #Create variable of what new directory should be named.
-    print(x)
     
     #Create variable of what new directory should be named.
     dir <- paste0(getwd(),"/", basename(x),"_DoradoQC_simplex")
@@ -56,6 +52,11 @@ input <- function(x)  {
       bind_rows() %>% #Merge the list into a single dataframe.
       list(reads = ., 
            dir = dir) #Create a new list of reads and the directory created for the graphing function. 
+    
+    #This fails and stops the script if the dataframe contains missing values. 
+    #For truly simplex data, that indicates some basecalling failed and is corrupted.
+    #Otherwise, the user is likely submitting duplex data.
+    
   } else if (dir.exists(x) && (grepl("DoradoQCduplex_", x))){ #Same as previous, except if a DoradoQCduplex_ directory exists, skip the input. 
     print(paste0("A summary of the directory <",x,"> currently exists already! Rename the directory or summary file and try again."))
     next
@@ -114,7 +115,6 @@ graphing <- function(all.summary.list) {
     print("Histogram of Read Lengths created")
   
   #Scatterplot with histogram margins
-
     scatter.histo <- ggplot(all.summary.list$reads, aes(x=sequence_length_template, y=mean_qscore_template, color=(mean_qscore_template >= qscore))) + 
       geom_point() +
       labs(y="Mean Q-Score", x= "Read Length") +
@@ -124,7 +124,6 @@ graphing <- function(all.summary.list) {
     ggsave("sequencelength_qscore_scatter_with_histogram.png", plot = scatter.histo)
     print("Scatter with Histogram Margins created")
   
-    
     
   #Cumulative Sum over time 
     #Create subsample of reads over quality score
@@ -162,6 +161,6 @@ if (length(args)==0) {
 
 for (x in args) {
    x %>% 
-    input() %>%
+    import() %>%
       graphing()
 }
