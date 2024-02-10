@@ -1,0 +1,6 @@
+Package: DoradoVisualized
+Type: Package
+Title: Dorado Visualized: Statistical Visualization and Bioinformatics
+Version: 0.0.1.0
+RoxygenNote: 7.3.1
+Encoding: UTF-8
